@@ -25,8 +25,6 @@ namespace SOProject
     {
         Socket server;
         Thread atender;
-        delegate void DelegadoParaPonerTexto(string texto);
-        string conectados;
         string myname;
         delegate void hide_window_delegate();
         int acceptedInvitation = 0;
@@ -36,6 +34,8 @@ namespace SOProject
         NewGame ng;
         ChatRoom room;
         int inv = 0;
+        private Dictionary<int, ChatRoom> activeChatRooms = new Dictionary<int, ChatRoom>();
+
         public Queries(Socket s, string conectados, string myname)
         {
             InitializeComponent();
@@ -44,12 +44,9 @@ namespace SOProject
             atender = new Thread(ts);
             atender.Start();
             Console.WriteLine("Hilo iniciado...");
-            this.conectados = conectados;
             ConnectedList(conectados);
             this.myname = myname;
         }
-
-        private Dictionary<int, ChatRoom> activeChatRooms = new Dictionary<int, ChatRoom>();
 
         public void RemoveChatRoom(int roomID)
         {
@@ -338,11 +335,21 @@ namespace SOProject
 
                         case "8":
                             { // Invite notification
-                                int receivedID = Convert.ToInt32(trozos[1]);
-                                string host = trozos[2];
-
-                                if (!activeChatRooms.ContainsKey(receivedID))
+                              // Ensure the message format is valid
+                                if (trozos.Length >= 3) // Expecting at least "8/roomID/host"
                                 {
+                                    int receivedID;
+                                    bool parseSuccess = int.TryParse(trozos[1], out receivedID);
+                                    string host = trozos[2];
+
+                                    if (!parseSuccess)
+                                    {
+                                        MessageBox.Show("Failed to parse Room ID from the server.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        break;
+                                    }
+
+                                    Console.WriteLine($"Invite received. Room ID: {receivedID}, Host: {host}"); // Debug log
+
                                     DialogResult result = MessageBox.Show(
                                         $"{host} has invited you to a chatroom. Do you accept?",
                                         "Chatroom Invitation",
@@ -362,10 +369,13 @@ namespace SOProject
                                 }
                                 else
                                 {
-                                    MessageBox.Show("You already responded to this invitation.");
+                                    // Log incomplete data
+                                    Console.WriteLine($"Incomplete invite data received: {string.Join("/", trozos)}");
+                                    MessageBox.Show("Invalid invitation data received from the server.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                                 }
                                 break;
                             }
+
 
                         case "9": //get id if you are the onw that invites
                             int gameID = Convert.ToInt32(trozos[1]);
@@ -521,6 +531,11 @@ namespace SOProject
             {
                 MessageBox.Show($"Error: {ex.Message}");
             }
+        }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
 
         /*private void chat_Click(object sender, EventArgs e)
